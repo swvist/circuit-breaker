@@ -58,6 +58,10 @@
       (record-failure! circuit-name)
       (throw+))))
 
+(defn- circuit-info [circuit-name]
+  {:name circuit-name
+   :open-since (time-since-broken circuit-name)})
+
 (defn reset-all-circuit-counters! []
   (concurrent-map/clear circuit-breakers-counters))
 
@@ -83,13 +87,13 @@
      (closed-circuit-path circuit-name method-that-might-error)))
   ([circuit-name method-that-might-error tripped-method]
    (if (tripped? circuit-name)
-     (tripped-method)
+     (tripped-method (circuit-info circuit-name))
      (closed-circuit-path circuit-name method-that-might-error))))
 
 (defn with-circuit-breaker
   "If circuit breaker is tripped, run tripped, else run connected. If the
   connected function throws an error, it won't cause the circuit to trip."
-  [circuit {:keys [tripped connected]}]
-  (if (tripped? circuit)
-    (tripped)
+  [circuit-name {:keys [tripped connected]}]
+  (if (tripped? circuit-name)
+    (tripped (circuit-info circuit-name))
     (connected)))
