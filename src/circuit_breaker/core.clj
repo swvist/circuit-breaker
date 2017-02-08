@@ -15,8 +15,11 @@
 (defn- timeout-in-seconds [circuit-name]
   (:timeout (concurrent-map/get circuit-breakers-config circuit-name)))
 
-(defn- time-since-broken [circuit-name]
+(defn- time-when-broken [circuit-name]
   (concurrent-map/get circuit-breakers-open circuit-name))
+
+(defn- time-since-broken [circuit-name]
+  (time/in-seconds (time/interval (time-when-broken circuit-name) (time/now))))
 
 (defn- exception-counter [circuit-name]
   (or (concurrent-map/get circuit-breakers-counters circuit-name) 0))
@@ -32,10 +35,10 @@
   (concurrent-map/put circuit-breakers-open circuit-name (time/now)))
 
 (defn- breaker-open? [circuit-name]
-  (boolean (time-since-broken circuit-name)))
+  (boolean (time-when-broken circuit-name)))
 
 (defn- timeout-exceeded? [circuit-name]
-  (> (time/in-seconds (time/interval (time-since-broken circuit-name) (time/now))) (timeout-in-seconds circuit-name)))
+  (> (time-since-broken circuit-name) (timeout-in-seconds circuit-name)))
 
 (defn record-failure! [circuit-name]
   (inc-counter circuit-name)
